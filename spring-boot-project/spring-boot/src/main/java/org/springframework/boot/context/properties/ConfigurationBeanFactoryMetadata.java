@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,12 @@ import org.springframework.util.ReflectionUtils;
  */
 public class ConfigurationBeanFactoryMetadata implements BeanFactoryPostProcessor {
 
+	/**
+	 * The bean name that this class is registered with.
+	 */
+	public static final String BEAN_NAME = ConfigurationBeanFactoryMetadata.class
+			.getName();
+
 	private ConfigurableListableBeanFactory beanFactory;
 
 	private final Map<String, FactoryMetadata> beansFactoryMetadata = new HashMap<>();
@@ -71,7 +77,7 @@ public class ConfigurationBeanFactoryMetadata implements BeanFactoryPostProcesso
 	public <A extends Annotation> A findFactoryAnnotation(String beanName,
 			Class<A> type) {
 		Method method = findFactoryMethod(beanName);
-		return (method == null ? null : AnnotationUtils.findAnnotation(method, type));
+		return (method != null) ? AnnotationUtils.findAnnotation(method, type) : null;
 	}
 
 	public Method findFactoryMethod(String beanName) {

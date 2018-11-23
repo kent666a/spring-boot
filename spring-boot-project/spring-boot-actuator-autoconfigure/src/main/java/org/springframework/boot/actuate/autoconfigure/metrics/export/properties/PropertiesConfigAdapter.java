@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import org.springframework.util.Assert;
 /**
  * Base class for properties to config adapters.
  *
- * @param <T> The properties type
+ * @param <T> the properties type
  * @author Phillip Webb
  * @author Nikolay Rybak
  * @since 2.0.0
@@ -51,7 +51,7 @@ public class PropertiesConfigAdapter<T> {
 	 */
 	protected final <V> V get(Function<T, V> getter, Supplier<V> fallback) {
 		V value = getter.apply(this.properties);
-		return (value != null ? value : fallback.get());
+		return (value != null) ? value : fallback.get();
 	}
 
 }

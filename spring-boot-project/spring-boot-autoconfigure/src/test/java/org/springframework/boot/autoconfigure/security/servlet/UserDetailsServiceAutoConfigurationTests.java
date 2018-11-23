@@ -34,7 +34,9 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.TestingAuthenticationProvider;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,8 +54,8 @@ import static org.mockito.Mockito.mock;
 public class UserDetailsServiceAutoConfigurationTests {
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-			.withUserConfiguration(TestSecurityConfiguration.class)
-			.withConfiguration(AutoConfigurations.of(UserDetailsServiceAutoConfiguration.class));
+			.withUserConfiguration(TestSecurityConfiguration.class).withConfiguration(
+					AutoConfigurations.of(UserDetailsServiceAutoConfiguration.class));
 
 	@Rule
 	public OutputCapture outputCapture = new OutputCapture();
@@ -93,7 +95,7 @@ public class UserDetailsServiceAutoConfigurationTests {
 					UserDetailsService userDetailsService = context
 							.getBean(UserDetailsService.class);
 					assertThat(this.outputCapture.toString())
-							.doesNotContain("Using default security password: ");
+							.doesNotContain("Using generated security password: ");
 					assertThat(userDetailsService.loadUserByUsername("foo")).isNotNull();
 				});
 	}
@@ -106,7 +108,7 @@ public class UserDetailsServiceAutoConfigurationTests {
 					AuthenticationProvider provider = context
 							.getBean(AuthenticationProvider.class);
 					assertThat(this.outputCapture.toString())
-							.doesNotContain("Using default security password: ");
+							.doesNotContain("Using generated security password: ");
 					TestingAuthenticationToken token = new TestingAuthenticationToken(
 							"foo", "bar");
 					assertThat(provider.authenticate(token)).isNotNull();
@@ -115,7 +117,8 @@ public class UserDetailsServiceAutoConfigurationTests {
 
 	@Test
 	public void userDetailsServiceWhenPasswordEncoderAbsentAndDefaultPassword() {
-		this.contextRunner.withUserConfiguration(TestSecurityConfiguration.class).run(((context) -> {
+		this.contextRunner.withUserConfiguration(TestSecurityConfiguration.class)
+				.run(((context) -> {
 					InMemoryUserDetailsManager userDetailsService = context
 							.getBean(InMemoryUserDetailsManager.class);
 					String password = userDetailsService.loadUserByUsername("user")
@@ -148,10 +151,17 @@ public class UserDetailsServiceAutoConfigurationTests {
 						.doesNotHaveBean(InMemoryUserDetailsManager.class)));
 	}
 
+	@Test
+	public void generatedPasswordShouldNotBePrintedIfAuthenticationManagerBuilderIsUsed() {
+		this.contextRunner
+				.withUserConfiguration(TestConfigWithAuthenticationManagerBuilder.class)
+				.run(((context) -> assertThat(this.outputCapture.toString())
+						.doesNotContain("Using generated security password: ")));
+	}
+
 	private void testPasswordEncoding(Class<?> configClass, String providedPassword,
 			String expectedPassword) {
-		this.contextRunner
-				.withUserConfiguration(configClass)
+		this.contextRunner.withUserConfiguration(configClass)
 				.withPropertyValues("spring.security.user.password=" + providedPassword)
 				.run(((context) -> {
 					InMemoryUserDetailsManager userDetailsService = context
@@ -223,6 +233,25 @@ public class UserDetailsServiceAutoConfigurationTests {
 		@Bean
 		public ClientRegistrationRepository clientRegistrationRepository() {
 			return mock(ClientRegistrationRepository.class);
+		}
+
+	}
+
+	@Configuration
+	@Import(TestSecurityConfiguration.class)
+	protected static class TestConfigWithAuthenticationManagerBuilder {
+
+		@Bean
+		public WebSecurityConfigurerAdapter webSecurityConfigurerAdapter() {
+			return new WebSecurityConfigurerAdapter() {
+				@Override
+				protected void configure(AuthenticationManagerBuilder auth)
+						throws Exception {
+					auth.inMemoryAuthentication().withUser("hero").password("{noop}hero")
+							.roles("HERO", "USER").and().withUser("user")
+							.password("{noop}user").roles("USER");
+				}
+			};
 		}
 
 	}

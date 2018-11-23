@@ -57,7 +57,7 @@ public class ApplicationHome {
 	 * @param sourceClass the source class or {@code null}
 	 */
 	public ApplicationHome(Class<?> sourceClass) {
-		this.source = findSource(sourceClass == null ? getStartClass() : sourceClass);
+		this.source = findSource((sourceClass != null) ? sourceClass : getStartClass());
 		this.dir = findHomeDir(this.source);
 	}
 
@@ -88,11 +88,11 @@ public class ApplicationHome {
 
 	private File findSource(Class<?> sourceClass) {
 		try {
-			ProtectionDomain domain = (sourceClass == null ? null
-					: sourceClass.getProtectionDomain());
-			CodeSource codeSource = (domain == null ? null : domain.getCodeSource());
-			URL location = (codeSource == null ? null : codeSource.getLocation());
-			File source = (location == null ? null : findSource(location));
+			ProtectionDomain domain = (sourceClass != null)
+					? sourceClass.getProtectionDomain() : null;
+			CodeSource codeSource = (domain != null) ? domain.getCodeSource() : null;
+			URL location = (codeSource != null) ? codeSource.getLocation() : null;
+			File source = (location != null) ? findSource(location) : null;
 			if (source != null && source.exists() && !isUnitTest()) {
 				return source.getAbsoluteFile();
 			}
@@ -107,8 +107,7 @@ public class ApplicationHome {
 		try {
 			StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
 			for (int i = stackTrace.length - 1; i >= 0; i--) {
-				StackTraceElement element = stackTrace[i];
-				if (element.getClassName().startsWith("org.junit.")) {
+				if (stackTrace[i].getClassName().startsWith("org.junit.")) {
 					return true;
 				}
 			}
@@ -137,11 +136,11 @@ public class ApplicationHome {
 
 	private File findHomeDir(File source) {
 		File homeDir = source;
-		homeDir = (homeDir == null ? findDefaultHomeDir() : homeDir);
+		homeDir = (homeDir != null) ? homeDir : findDefaultHomeDir();
 		if (homeDir.isFile()) {
 			homeDir = homeDir.getParentFile();
 		}
-		homeDir = (homeDir.exists() ? homeDir : new File("."));
+		homeDir = homeDir.exists() ? homeDir : new File(".");
 		return homeDir.getAbsoluteFile();
 	}
 

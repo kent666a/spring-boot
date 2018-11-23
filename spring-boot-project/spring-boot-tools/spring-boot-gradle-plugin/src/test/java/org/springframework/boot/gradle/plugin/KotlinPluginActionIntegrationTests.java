@@ -44,11 +44,25 @@ public class KotlinPluginActionIntegrationTests {
 
 	@Test
 	public void kotlinVersionMatchesKotlinPluginVersion() {
-		String output = this.gradleBuild
-				.build("kotlinVersion", "dependencies", "--configuration", "compile")
-				.getOutput();
-		assertThat(output).contains("Kotlin version: 1.2.10");
-		assertThat(output).contains("org.jetbrains.kotlin:kotlin-stdlib-jdk8: -> 1.2.10");
+		String output = this.gradleBuild.build("kotlinVersion", "dependencies",
+				"--configuration", "compileClasspath").getOutput();
+		assertThat(output).contains("Kotlin version: 1.2.20");
+		assertThat(output)
+				.containsPattern("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.20");
+	}
+
+	@Test
+	public void kotlinCompileTasksUseJavaParametersFlagByDefault() {
+		assertThat(this.gradleBuild.build("kotlinCompileTasksJavaParameters").getOutput())
+				.contains("compileKotlin java parameters: true")
+				.contains("compileTestKotlin java parameters: true");
+	}
+
+	@Test
+	public void kotlinCompileTasksCanOverrideDefaultJavaParametersFlag() {
+		assertThat(this.gradleBuild.build("kotlinCompileTasksJavaParameters").getOutput())
+				.contains("compileKotlin java parameters: false")
+				.contains("compileTestKotlin java parameters: false");
 	}
 
 }

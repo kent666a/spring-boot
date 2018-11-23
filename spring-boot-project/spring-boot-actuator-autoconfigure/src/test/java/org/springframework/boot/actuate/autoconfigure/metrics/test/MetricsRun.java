@@ -21,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.springframework.boot.actuate.autoconfigure.metrics.CompositeMeterRegistryAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.atlas.AtlasMetricsExportAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.datadog.DatadogMetricsExportAutoConfiguration;
@@ -28,10 +29,13 @@ import org.springframework.boot.actuate.autoconfigure.metrics.export.ganglia.Gan
 import org.springframework.boot.actuate.autoconfigure.metrics.export.graphite.GraphiteMetricsExportAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.influx.InfluxMetricsExportAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.jmx.JmxMetricsExportAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.metrics.export.newrelic.NewRelicMetricsExportAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.prometheus.PrometheusMetricsExportAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.metrics.export.signalfx.SignalFxMetricsExportAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.simple.SimpleMetricsExportAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.statsd.StatsdMetricsExportAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.AbstractApplicationContextRunner;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.util.Assert;
 
@@ -44,7 +48,7 @@ import org.springframework.util.Assert;
  */
 public final class MetricsRun {
 
-	private static final Set<Class<?>> IMPLEMENTATIONS;
+	private static final Set<Class<?>> EXPORT_AUTO_CONFIGURATIONS;
 
 	static {
 		Set<Class<?>> implementations = new LinkedHashSet<>();
@@ -54,11 +58,17 @@ public final class MetricsRun {
 		implementations.add(GraphiteMetricsExportAutoConfiguration.class);
 		implementations.add(InfluxMetricsExportAutoConfiguration.class);
 		implementations.add(JmxMetricsExportAutoConfiguration.class);
+		implementations.add(NewRelicMetricsExportAutoConfiguration.class);
 		implementations.add(PrometheusMetricsExportAutoConfiguration.class);
 		implementations.add(SimpleMetricsExportAutoConfiguration.class);
+		implementations.add(SignalFxMetricsExportAutoConfiguration.class);
 		implementations.add(StatsdMetricsExportAutoConfiguration.class);
-		IMPLEMENTATIONS = Collections.unmodifiableSet(implementations);
+		EXPORT_AUTO_CONFIGURATIONS = Collections.unmodifiableSet(implementations);
 	}
+
+	private static final AutoConfigurations AUTO_CONFIGURATIONS = AutoConfigurations.of(
+			MetricsAutoConfiguration.class,
+			CompositeMeterRegistryAutoConfiguration.class);
 
 	private MetricsRun() {
 	}
@@ -68,31 +78,32 @@ public final class MetricsRun {
 	 * implementation.
 	 * @return the function to apply
 	 */
-	public static Function<ApplicationContextRunner, ApplicationContextRunner> simple() {
+	public static <T extends AbstractApplicationContextRunner<?, ?, ?>> Function<T, T> simple() {
 		return limitedTo(SimpleMetricsExportAutoConfiguration.class);
 	}
 
 	/**
 	 * Return a function that configures the run to be limited to the specified
 	 * implementations.
-	 * @param implementations the implementations to include
+	 * @param exportAutoConfigurations the export auto-configurations to include
 	 * @return the function to apply
 	 */
-	public static Function<ApplicationContextRunner, ApplicationContextRunner> limitedTo(
-			Class<?>... implementations) {
-		return (contextRunner) -> apply(contextRunner, implementations);
+	public static <T extends AbstractApplicationContextRunner<?, ?, ?>> Function<T, T> limitedTo(
+			Class<?>... exportAutoConfigurations) {
+		return (contextRunner) -> apply(contextRunner, exportAutoConfigurations);
 	}
 
-	private static ApplicationContextRunner apply(ApplicationContextRunner contextRunner,
-			Class<?>[] implementations) {
-		for (Class<?> implementation : implementations) {
-			Assert.state(IMPLEMENTATIONS.contains(implementation),
-					"Unknown implementation " + implementation.getName());
+	@SuppressWarnings("unchecked")
+	private static <T extends AbstractApplicationContextRunner<?, ?, ?>> T apply(
+			T contextRunner, Class<?>[] exportAutoConfigurations) {
+		for (Class<?> configuration : exportAutoConfigurations) {
+			Assert.state(EXPORT_AUTO_CONFIGURATIONS.contains(configuration),
+					() -> "Unknown export auto-configuration " + configuration.getName());
 		}
-		return contextRunner
+		return (T) contextRunner
 				.withPropertyValues("management.metrics.use-global-registry=false")
-				.withConfiguration(AutoConfigurations.of(MetricsAutoConfiguration.class))
-				.withConfiguration(AutoConfigurations.of(implementations));
+				.withConfiguration(AUTO_CONFIGURATIONS)
+				.withConfiguration(AutoConfigurations.of(exportAutoConfigurations));
 	}
 
 }
