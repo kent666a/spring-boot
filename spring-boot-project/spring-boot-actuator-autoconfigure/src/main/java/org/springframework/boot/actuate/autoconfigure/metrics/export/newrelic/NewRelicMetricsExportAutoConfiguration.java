@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,10 +17,12 @@
 package org.springframework.boot.actuate.autoconfigure.metrics.export.newrelic;
 
 import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
+import io.micrometer.newrelic.NewRelicClientProvider;
 import io.micrometer.newrelic.NewRelicConfig;
 import io.micrometer.newrelic.NewRelicMeterRegistry;
+import io.micrometer.newrelic.NewRelicMeterRegistry.Builder;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.metrics.CompositeMeterRegistryAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.export.simple.SimpleMetricsExportAutoConfiguration;
@@ -43,13 +45,13 @@ import org.springframework.context.annotation.Configuration;
  * @author Artsiom Yudovin
  * @since 2.0.0
  */
-@Configuration
-@AutoConfigureBefore({ CompositeMeterRegistryAutoConfiguration.class,
-		SimpleMetricsExportAutoConfiguration.class })
+@Configuration(proxyBeanMethods = false)
+@AutoConfigureBefore({ CompositeMeterRegistryAutoConfiguration.class, SimpleMetricsExportAutoConfiguration.class })
 @AutoConfigureAfter(MetricsAutoConfiguration.class)
 @ConditionalOnBean(Clock.class)
 @ConditionalOnClass(NewRelicMeterRegistry.class)
-@ConditionalOnProperty(prefix = "management.metrics.export.newrelic", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "management.metrics.export.newrelic", name = "enabled", havingValue = "true",
+		matchIfMissing = true)
 @EnableConfigurationProperties(NewRelicProperties.class)
 public class NewRelicMetricsExportAutoConfiguration {
 
@@ -67,14 +69,11 @@ public class NewRelicMetricsExportAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public NewRelicMeterRegistry newRelicMeterRegistry(NewRelicConfig newRelicConfig,
-			Clock clock) {
-		return NewRelicMeterRegistry.builder(newRelicConfig).clock(clock)
-				.httpClient(
-						new HttpUrlConnectionSender(this.properties.getConnectTimeout(),
-								this.properties.getReadTimeout()))
-				.build();
-
+	public NewRelicMeterRegistry newRelicMeterRegistry(NewRelicConfig newRelicConfig, Clock clock,
+			ObjectProvider<NewRelicClientProvider> newRelicClientProvider) {
+		Builder builder = NewRelicMeterRegistry.builder(newRelicConfig).clock(clock);
+		newRelicClientProvider.ifUnique(builder::clientProvider);
+		return builder.build();
 	}
 
 }
